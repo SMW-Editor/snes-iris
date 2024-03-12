@@ -1,0 +1,23 @@
+[package]
+name = "snes-iris"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winit = "0.27"
+glutin = "0.30"
+glutin-winit = "0.2"
+glow = "0.12"
+raw-window-handle = "0.5"
+imgui = { version = "0.11.0", features = ["docking", "freetype"] }
+imgui-sys = "0.11.0"
+imgui-winit-support = "0.11.0"
+imgui-glow-renderer = "0.11.0"
+
+rand = "0.8.5"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+serde_yaml = "0.9"

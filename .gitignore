@@ -1,0 +1,7 @@
+.idea/
+*.sfc
+*.smc
+Cargo.lock
+imgui.ini
+labels.txt
+target/

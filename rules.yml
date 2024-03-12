@@ -1,0 +1,401 @@
+rules:
+- !JumpTable
+  pc: 37669
+  size: 42
+  long: false
+- !JumpTable
+  pc: 39817
+  size: 2
+  long: false
+- !JumpTable
+  pc: 50581
+  size: 14
+  long: false
+- !JumpTable
+  pc: 98611
+  size: 13
+  long: false
+- !JumpTable
+  pc: 98681
+  size: 201
+  long: false
+- !JumpTable
+  pc: 99784
+  size: 201
+  long: false
+- !JumpTable
+  pc: 110265
+  size: 3
+  long: false
+- !JumpTable
+  pc: 114150
+  size: 4
+  long: false
+- !JumpTable
+  pc: 116048
+  size: 6
+  long: false
+- !JumpTable
+  pc: 118286
+  size: 6
+  long: false
+- !JumpTable
+  pc: 118369
+  size: 3
+  long: false
+- !JumpTable
+  pc: 118382
+  size: 3
+  long: false
+- !JumpTable
+  pc: 119065
+  size: 2
+  long: false
+- !JumpTable
+  pc: 120670
+  size: 3
+  long: false
+- !JumpTable
+  pc: 123604
+  size: 4
+  long: false
+- !JumpTable
+  pc: 127175
+  size: 4
+  long: false
+- !JumpTable
+  pc: 129731
+  size: 7
+  long: false
+- !JumpTable
+  pc: 166804
+  size: 12
+  long: false
+- !JumpTable
+  pc: 168030
+  size: 8
+  long: false
+- !JumpTable
+  pc: 169671
+  size: 6
+  long: false
+- !JumpTable
+  pc: 170791
+  size: 19
+  long: false
+- !JumpTable
+  pc: 176136
+  size: 15
+  long: false
+- !JumpTable
+  pc: 177068
+  size: 3
+  long: false
+- !JumpTable
+  pc: 179552
+  size: 2
+  long: false
+- !JumpTable
+  pc: 180262
+  size: 2
+  long: false
+- !JumpTable
+  pc: 181048
+  size: 13
+  long: false
+- !JumpTable
+  pc: 183796
+  size: 3
+  long: false
+- !JumpTable
+  pc: 185355
+  size: 5
+  long: false
+- !JumpTable
+  pc: 187613
+  size: 4
+  long: false
+- !JumpTable
+  pc: 188350
+  size: 3
+  long: false
+- !JumpTable
+  pc: 188722
+  size: 3
+  long: false
+- !JumpTable
+  pc: 190275
+  size: 2
+  long: false
+- !JumpTable
+  pc: 190815
+  size: 5
+  long: false
+- !JumpTable
+  pc: 191359
+  size: 3
+  long: false
+- !JumpTable
+  pc: 193331
+  size: 2
+  long: false
+- !JumpTable
+  pc: 194593
+  size: 9
+  long: false
+- !JumpTable
+  pc: 229548
+  size: 7
+  long: false
+- !JumpTable
+  pc: 231637
+  size: 3
+  long: false
+- !JumpTable
+  pc: 232008
+  size: 4
+  long: false
+- !JumpTable
+  pc: 234052
+  size: 2
+  long: false
+- !JumpTable
+  pc: 234548
+  size: 4
+  long: false
+- !JumpTable
+  pc: 235298
+  size: 2
+  long: false
+- !JumpTable
+  pc: 236642
+  size: 4
+  long: false
+- !JumpTable
+  pc: 237384
+  size: 5
+  long: false
+- !JumpTable
+  pc: 238376
+  size: 10
+  long: false
+- !JumpTable
+  pc: 240931
+  size: 8
+  long: false
+- !JumpTable
+  pc: 247832
+  size: 4
+  long: false
+- !JumpTable
+  pc: 248869
+  size: 7
+  long: false
+- !JumpTable
+  pc: 296313
+  size: 13
+  long: true
+- !JumpTable
+  pc: 318196
+  size: 8
+  long: false
+- !JumpTable
+  pc: 320883
+  size: 8
+  long: false
+- !JumpTable
+  pc: 324582
+  size: 8
+  long: false
+- !JumpTable
+  pc: 325723
+  size: 11
+  long: false
+- !JumpTable
+  pc: 362527
+  size: 32
+  long: true
+- !JumpTable
+  pc: 362632
+  size: 32
+  long: true
+- !JumpTable
+  pc: 362737
+  size: 32
+  long: true
+- !JumpTable
+  pc: 362842
+  size: 32
+  long: true
+- !JumpTable
+  pc: 375939
+  size: 15
+  long: false
+- !JumpTable
+  pc: 375988
+  size: 15
+  long: false
+- !JumpTable
+  pc: 376044
+  size: 15
+  long: false
+- !JumpTable
+  pc: 376083
+  size: 15
+  long: false
+- !JumpTable
+  pc: 379914
+  size: 4
+  long: false
+- !JumpTable
+  pc: 383739
+  size: 3
+  long: true
+- !JumpTable
+  pc: 827866
+  size: 5
+  long: true
+- !JumpTable
+  pc: 838049
+  size: 7
+  long: false
+- !JumpTable
+  pc: 838076
+  size: 6
+  long: false
+- !JumpTable
+  pc: 838098
+  size: 5
+  long: false
+- !JumpTable
+  pc: 838124
+  size: 10
+  long: false
+- !JumpTable
+  pc: 838171
+  size: 8
+  long: false
+- !JumpTable
+  pc: 838213
+  size: 4
+  long: false
+- !JumpTable
+  pc: 838250
+  size: 2
+  long: false
+- !JumpTable
+  pc: 838261
+  size: 5
+  long: false
+- !JumpTable
+  pc: 893195
+  size: 256
+  long: true
+- !JumpTable
+  pc: 893978
+  size: 15
+  long: true
+- !JumpTable
+  pc: 894033
+  size: 63
+  long: true
+- !JumpTable
+  pc: 895820
+  size: 10
+  long: true
+- !JumpTable
+  pc: 901526
+  size: 63
+  long: true
+- !JumpTable
+  pc: 901958
+  size: 2
+  long: true
+- !JumpTable
+  pc: 904598
+  size: 63
+  long: true
+- !JumpTable
+  pc: 905048
+  size: 6
+  long: true
+- !JumpTable
+  pc: 905334
+  size: 2
+  long: true
+- !JumpTable
+  pc: 907670
+  size: 63
+  long: true
+- !JumpTable
+  pc: 908022
+  size: 4
+  long: true
+- !JumpTable
+  pc: 908687
+  size: 2
+  long: true
+- !JumpTable
+  pc: 911510
+  size: 63
+  long: true
+comments:
+  32772: Disable HDMA
+  32802: Set up direct page
+  32775: Disable DMA
+  32797: Clear flags d,i,z,c, set 16-bit mode
+  37524: This fills the portion of the HDMA table with 00 FF.
+  32790: Enable f-blank
+  37521: x = offset within hdma_table
+  37514: If yes, branch
+  32807: Create OAM reset routine
+  37518: Otherwise, clear two last bytes in the hdma table
+  37510: Is bit 0 of interrupt mode set?
+  32768: Disable interrupts.
+  32769: Disable NMI, IRQ and autojoypad
+  32796: Disable emulation mode
+  37536: Enable only channel 7 for HDMA.
+  32778: Clear APU ports
+  32806: Set up stack
+  32875: Wait until interrupt occurs
+label_names:
+  8514: hw_apu_io2
+  37536: hdma_set_ch7
+  16896: hw_nmi_enable
+  33130: vector_nmi
+  33015: spc_upload_data
+  32898: .sync
+  8513: hw_apu_io1
+  33038: spc_upload_bank1
+  8453: hw_bgmode
+  37521: fill_windowing_hdma_loop
+  8261023: mir_hdmaen
+  8356226: reset_oam+$182
+  33000: spc_upload_engine
+  32807: upload_oam_reset
+  32875: main_game_loop
+  8515: hw_apu_io3
+  8355842: reset_oam+2
+  32889: spc_upload_inner
+  33652: vector_irq
+  37507: fill_windowing_hdma
+  8258720: hdma_table
+  8448: hw_brightness
+  37475: sub_009263
+  32768: vector_start
+  33053: spc_upload_signaled
+  33021: spc_upload_samples
+  8355840: reset_oam
+  8512: hw_apu_io0
+  16907: hw_mdma_enable
+  32820: .loop
+  8497: hw_cgadsub
+  8355843: reset_oam+3
+  16912: hw_rdnmi
+  37666: run_gamemode
+  33063: .loop
+  35406: clear_stack
+  8261019: interrupt_mode
+  16908: hw_hdma_enable
+  8258721: hdma_table+1
+  8449: hw_objsel
