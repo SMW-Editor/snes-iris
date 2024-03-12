@@ -1,3 +1,7 @@
+use app::App;
+use eframe::NativeOptions;
+use egui::FontDefinitions;
+use egui_phosphor::Variant;
 use glutin_winit::{GlWindow, DisplayBuilder};
 use glutin::context::{ContextApi, ContextAttributesBuilder, Version};
 use winit::event_loop::EventLoop;
@@ -15,7 +19,23 @@ mod driver;
 mod cpu;
 mod dis;
 mod rom;
+mod app;
 
+fn main() {
+    // imgui_app();
+
+    eframe::run_native(
+        "snes-iris",
+        NativeOptions::default(),
+        Box::new(|cc| {
+            let mut fonts = FontDefinitions::default();
+            egui_phosphor::add_to_fonts(&mut fonts, Variant::Regular);
+            cc.egui_ctx.set_fonts(fonts);
+
+            Box::new(App::default())
+        })
+    ).ok();
+}
 
 fn main2() {
     let rom = rom::Rom::new(std::fs::read("smw.sfc").unwrap()[0x200..].to_vec(), rom::Mapper::LoRom);
@@ -25,7 +45,7 @@ fn main2() {
     dis.process_rules(rules.iter());
 }
 
-fn main() {
+fn imgui_app() {
     let event_loop = EventLoop::new();
     let window_builder = winit::window::WindowBuilder::new()
         .with_title("snes-iris")
