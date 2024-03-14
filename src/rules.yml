@@ -1,5 +1,0 @@
--
-  JumpTable:
-    pc: 0x009325
-    long: false
-    size: 0x29

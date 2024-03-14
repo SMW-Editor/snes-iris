@@ -12,10 +12,7 @@ use winit::event::{Event, WindowEvent};
 
 use glow::HasContext;
 
-mod shader;
 mod driver;
-//mod draw;
-//mod undo;
 mod cpu;
 mod dis;
 mod rom;
