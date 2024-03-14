@@ -56,12 +56,15 @@ pub enum Rule {
     JumpTable { pc: u32, size: u32, long: bool },
 }
 
+#[derive(Clone, Debug)]
 pub struct Line {
     pub pc: u32,
     pub len: usize,
     pub text: String,
     pub kind: LineKind
 }
+
+#[derive(Copy, Clone, Debug)]
 pub enum LineKind {
     Label,
     Code,

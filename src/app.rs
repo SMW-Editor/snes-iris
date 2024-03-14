@@ -1,8 +1,10 @@
-use egui::{CentralPanel, Context, DragValue, Frame, Key, ScrollArea, TextBuffer, TextEdit, TextStyle, TopBottomPanel, Ui, vec2};
+use egui::{CentralPanel, Color32, Context, DragValue, Frame, Key, RichText, ScrollArea, TextBuffer, TextEdit, TextStyle, TopBottomPanel, Ui, vec2};
+use egui_extras::{Size, StripBuilder};
 
 use egui_phosphor::regular as icons;
 
 use crate::{driver::GlobalState, dis};
+use crate::dis::{Line, LineKind};
 
 pub struct App {
     // todo: should probably keep everything in either App or GlobalState
@@ -123,7 +125,7 @@ impl App {
 
     fn editor(&mut self, ui: &mut Ui) {
         Frame::canvas(ui.style()).show(ui, |ui| {
-            let text_style = egui::TextStyle::Monospace;
+            let text_style = TextStyle::Monospace;
             let row_height = ui.text_style_height(&text_style);
             let num_rows = self.state.lines.len();
             let font_id = text_style.resolve(ui.style());
@@ -131,28 +133,43 @@ impl App {
             ScrollArea::vertical().auto_shrink(false).show_rows(ui, row_height, num_rows, |ui, row_range| {
                 // contents of the editor
                 for i in row_range {
-                    let line = &self.state.lines[i];
-                    let mut comment = if let dis::LineKind::Code = line.kind {
-                        self.state.comments
-                            .get_mut(&line.pc)
-                            // .map(|l| "; ".to_owned() + l)
-                            .map(|l| l.to_owned())
-                            .unwrap_or("".to_owned())
-                    } else { String::new() };
-                    // idk why but it seems like i need to wrap the stripbuilder inside a
-                    // Horizontal here lol
                     ui.horizontal(|ui| {
-                        egui_extras::StripBuilder::new(ui)
-                            .size(egui_extras::Size::exact(8. * char_width))
-                            .size(egui_extras::Size::exact(40. * char_width))
-                            .size(egui_extras::Size::remainder())
+                        StripBuilder::new(ui)
+                            .size(Size::exact(8. * char_width))
+                            .size(Size::exact(40. * char_width))
+                            .size(Size::remainder())
                             .horizontal(|mut strip| {
-                                strip.cell(|ui| { ui.monospace(format!("{:06X}", line.pc)); });
+                                let line_pc = self.state.lines[i].pc;
+                                let line_kind = self.state.lines[i].kind;
+                                strip.cell(|ui| { ui.monospace(format!("{:06X}", line_pc)); });
                                 strip.cell(|ui| {
-                                    let txt = egui::RichText::new(line.text.trim_end()).monospace().color(egui::Color32::WHITE);
-                                    ui.label(txt);
+                                    if matches!(line_kind, LineKind::Label) {
+                                        let default = self.state.dis.get_label(line_pc);
+                                        let label = self.state.dis.label_names.entry(line_pc).or_insert(default);
+                                        if TextEdit::singleline(label)
+                                            .frame(false)
+                                            .font(TextStyle::Monospace)
+                                            .desired_width(f32::INFINITY)
+                                            .margin(vec2(0.0, 0.0))
+                                            .show(ui)
+                                            .response
+                                            .changed()
+                                        {
+                                            self.state.update_lines();
+                                        }
+                                    } else {
+                                        ui.monospace(RichText::new(self.state.lines[i].text.trim_end()).color(Color32::WHITE));
+                                    }
                                 });
                                 strip.cell(|ui| {
+                                    let mut comment = match line_kind {
+                                        LineKind::Code => self.state.comments
+                                            .get_mut(&line_pc)
+                                            .map(|l| l.to_owned())
+                                            .unwrap_or("".to_owned()),
+                                        _ => String::new(),
+                                    };
+
                                     ui.monospace("; ");
                                     if TextEdit::singleline(&mut comment)
                                         .frame(false)
@@ -164,11 +181,11 @@ impl App {
                                         .changed()
                                     {
                                         if comment.is_empty() {
-                                            self.state.comments.remove(&line.pc);
+                                            self.state.comments.remove(&line_pc);
                                         } else {
-                                            match self.state.comments.get_mut(&line.pc) {
+                                            match self.state.comments.get_mut(&line_pc) {
                                                 Some(old_comment) => *old_comment = comment,
-                                                None => { self.state.comments.insert(line.pc, comment); },
+                                                None => { self.state.comments.insert(line_pc, comment); },
                                             }
                                         }
                                     }
