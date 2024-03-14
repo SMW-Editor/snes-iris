@@ -302,7 +302,11 @@ pub struct SavedData {
 
 impl GlobalState {
     pub fn new(rom_fname: &str, rules_fname: &str) -> Self {
-        let rom = crate::rom::Rom::new(std::fs::read(rom_fname).unwrap(), crate::rom::Mapper::LoRom);
+        let mut rom_bytes = std::fs::read(rom_fname).unwrap();
+        if rom_bytes.len() % 0x400 == 0x200 {
+            rom_bytes.drain(..0x200);
+        }
+        let rom = Rom::new(rom_bytes, crate::rom::Mapper::LoRom);
         let mut dis = dis::Disassembler::new(rom.clone());
         let data: SavedData = serde_yaml::from_slice(&std::fs::read(rules_fname).unwrap()).unwrap();
         dis.label_names = data.label_names;

@@ -1,4 +1,4 @@
-use egui::{CentralPanel, Context, DragValue, Frame, ScrollArea, TopBottomPanel, Ui};
+use egui::{CentralPanel, Context, DragValue, Frame, Key, ScrollArea, TextBuffer, TextEdit, TextStyle, TopBottomPanel, Ui, vec2};
 
 use egui_phosphor::regular as icons;
 
@@ -9,11 +9,12 @@ pub struct App {
     state: GlobalState,
     // this is separate to allow detecting when the bank value actually changed
     bank_value: u8,
+    currently_edited_text: Option<String>,
 }
 
 impl App {
     pub fn new(state: GlobalState) -> Self {
-        Self { bank_value: state.bank, state }
+        Self { bank_value: state.bank, state, currently_edited_text: None, }
     }
 }
 
@@ -31,11 +32,6 @@ impl eframe::App for App {
         });
 
         CentralPanel::default().show(ctx, |ui| {
-            // Frame::menu(ui.style()).show(ui, |ui| {
-            //     ui.horizontal(|ui| {
-            //         self.toolbar(ui);
-            //     });
-            // });
             ui.add_space(ui.spacing().item_spacing.y);
             self.editor(ui);
         });
@@ -132,12 +128,16 @@ impl App {
             let num_rows = self.state.lines.len();
             let font_id = text_style.resolve(ui.style());
             let char_width = ui.fonts(|fonts| fonts.glyph_width(&font_id, 'x'));
-            egui::ScrollArea::vertical().auto_shrink(false).show_rows(ui, row_height, num_rows, |ui, row_range| {
+            ScrollArea::vertical().auto_shrink(false).show_rows(ui, row_height, num_rows, |ui, row_range| {
                 // contents of the editor
                 for i in row_range {
-                    let l = &self.state.lines[i];
-                    let comment = if let dis::LineKind::Code = l.kind {
-                        self.state.comments.get(&l.pc).map(|l| "; ".to_owned() + l).unwrap_or("".to_owned())
+                    let line = &self.state.lines[i];
+                    let mut comment = if let dis::LineKind::Code = line.kind {
+                        self.state.comments
+                            .get_mut(&line.pc)
+                            // .map(|l| "; ".to_owned() + l)
+                            .map(|l| l.to_owned())
+                            .unwrap_or("".to_owned())
                     } else { String::new() };
                     // idk why but it seems like i need to wrap the stripbuilder inside a
                     // Horizontal here lol
@@ -147,12 +147,32 @@ impl App {
                             .size(egui_extras::Size::exact(40. * char_width))
                             .size(egui_extras::Size::remainder())
                             .horizontal(|mut strip| {
-                                strip.cell(|ui| { ui.monospace(format!("{:06X}", l.pc)); });
+                                strip.cell(|ui| { ui.monospace(format!("{:06X}", line.pc)); });
                                 strip.cell(|ui| {
-                                    let txt = egui::RichText::new(l.text.trim_end()).monospace().color(egui::Color32::WHITE);
+                                    let txt = egui::RichText::new(line.text.trim_end()).monospace().color(egui::Color32::WHITE);
                                     ui.label(txt);
                                 });
-                                strip.cell(|ui| { ui.monospace(comment); });
+                                strip.cell(|ui| {
+                                    ui.monospace("; ");
+                                    if TextEdit::singleline(&mut comment)
+                                        .frame(false)
+                                        .font(TextStyle::Monospace)
+                                        .desired_width(f32::INFINITY)
+                                        .margin(vec2(0.0, 0.0))
+                                        .show(ui)
+                                        .response
+                                        .changed()
+                                    {
+                                        if comment.is_empty() {
+                                            self.state.comments.remove(&line.pc);
+                                        } else {
+                                            match self.state.comments.get_mut(&line.pc) {
+                                                Some(old_comment) => *old_comment = comment,
+                                                None => { self.state.comments.insert(line.pc, comment); },
+                                            }
+                                        }
+                                    }
+                                });
                             });
                     });
                 }
