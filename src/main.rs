@@ -1,4 +1,5 @@
 use app::App;
+use driver::GlobalState;
 use eframe::NativeOptions;
 use egui::FontDefinitions;
 use egui_phosphor::Variant;
@@ -29,7 +30,7 @@ fn main() {
             egui_phosphor::add_to_fonts(&mut fonts, Variant::Regular);
             cc.egui_ctx.set_fonts(fonts);
 
-            Box::new(App::default())
+            Box::new(App::new(GlobalState::new("smw.sfc", "rules.yml")))
         })
     ).ok();
 }
@@ -98,8 +99,6 @@ fn imgui_app() {
     let mut im_renderer = imgui_glow_renderer::Renderer::initialize(&gl, &mut im_ctx, &mut im_tex, true).unwrap();
 
 
-    let mut driver = unsafe { driver::Driver::new(&gl) };
-
     event_loop.run(move |event, _, control_flow| {
         use rand::Rng;
         control_flow.set_poll();
@@ -122,7 +121,7 @@ fn imgui_app() {
             },
             Event::RedrawRequested(_) => {
                 let ui = im_ctx.frame();
-                unsafe { driver.draw(&gl, ui); }
+                //unsafe { driver.draw(&gl, ui); }
 
                 im_platform.prepare_render(ui, &window);
                 let draw = im_ctx.render();

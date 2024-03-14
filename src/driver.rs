@@ -4,6 +4,7 @@ use crate::dis;
 use crate::rom::Rom;
 use std::collections::HashMap;
 
+/*
 pub struct Driver {
     pub state: GlobalState,
 }
@@ -276,18 +277,20 @@ impl Driver {
             });*/
         });
     }
-}
+}*/
 
 pub struct GlobalState {
-    rom: Rom,
-    dis: dis::Disassembler,
-    rules: Vec<dis::Rule>,
-    selection: Option<[u32;2]>,
-    lines: Vec<dis::Line>,
-    comments: HashMap<u32, String>,
-    editing_comment: Option<u32>,
-    editing_label: Option<u32>,
-    bank: i32,
+    pub rom: Rom,
+    pub dis: dis::Disassembler,
+    pub rules: Vec<dis::Rule>,
+    pub selection: Option<[u32;2]>,
+    pub lines: Vec<dis::Line>,
+    pub comments: HashMap<u32, String>,
+    pub editing_comment: Option<u32>,
+    pub editing_label: Option<u32>,
+    pub bank: u8,
+    // should be PathBuf probably
+    pub rules_filename: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -298,10 +301,10 @@ pub struct SavedData {
 }
 
 impl GlobalState {
-    pub unsafe fn new(gl: &glow::Context) -> Self {
-        let rom = crate::rom::Rom::new(std::fs::read("smw.sfc").unwrap()[0x200..].to_vec(), crate::rom::Mapper::LoRom);
+    pub fn new(rom_fname: &str, rules_fname: &str) -> Self {
+        let rom = crate::rom::Rom::new(std::fs::read(rom_fname).unwrap(), crate::rom::Mapper::LoRom);
         let mut dis = dis::Disassembler::new(rom.clone());
-        let data: SavedData = serde_yaml::from_slice(&std::fs::read("rules.yml").unwrap()).unwrap();
+        let data: SavedData = serde_yaml::from_slice(&std::fs::read(rules_fname).unwrap()).unwrap();
         dis.label_names = data.label_names;
         dis.process_rules(data.rules.iter());
         let lines = dis.print_bank(0);
@@ -314,21 +317,23 @@ impl GlobalState {
             editing_comment: None,
             editing_label: None,
             comments: data.comments,
-            bank: 0
+            bank: 0,
+            rules_filename: rules_fname.to_string(),
         }
     }
-    fn save(&mut self) {
-        self.comments.retain(|k,v| {
+    pub fn save(&mut self) {
+        self.comments.retain(|_k, v| {
             v.len() > 0
         });
-        let mut b = serde_yaml::to_string(&SavedData {
+        let b = serde_yaml::to_string(&SavedData {
             rules: self.rules.clone(),
             comments: self.comments.clone(),
             label_names: self.dis.label_names.clone(),
         }).unwrap();
-        std::fs::write("rules.yml", &b);
+        // TODO: error reporting
+        std::fs::write(&self.rules_filename, &b).unwrap();
     }
-    fn update_lines(&mut self) {
+    pub fn update_lines(&mut self) {
         self.lines = self.dis.print_bank(self.bank as _);
     }
     /*

@@ -2,15 +2,18 @@ use egui::{CentralPanel, Context, DragValue, Frame, ScrollArea, TopBottomPanel, 
 
 use egui_phosphor::regular as icons;
 
+use crate::{driver::GlobalState, dis};
+
 pub struct App {
-    bank: u8,
+    // todo: should probably keep everything in either App or GlobalState
+    state: GlobalState,
+    // this is separate to allow detecting when the bank value actually changed
+    bank_value: u8,
 }
 
-impl Default for App {
-    fn default() -> Self {
-        Self {
-            bank: 0,
-        }
+impl App {
+    pub fn new(state: GlobalState) -> Self {
+        Self { bank_value: state.bank, state }
     }
 }
 
@@ -43,12 +46,13 @@ impl App {
     fn menu_bar(&mut self, ui: &mut Ui) {
         ui.menu_button("File", |ui| {
             if ui.button("Open ROM").clicked() {
-                //
                 ui.close_menu();
+                // TODO: ask for names
+                self.state = GlobalState::new("smw.sfc", "rules.yml");
             }
             if ui.button("Save").clicked() {
-                //
                 ui.close_menu();
+                self.state.save();
             }
 
             ui.separator();
@@ -107,8 +111,14 @@ impl App {
 
         ui.separator();
 
-        ui.add(DragValue::new(&mut self.bank));
-        ui.label("Bank");
+        let a = ui.add(DragValue::new(&mut self.bank_value));
+        let b = ui.label("Bank");
+        a.labelled_by(b.id);
+
+        if self.bank_value != self.state.bank {
+            self.state.bank = self.bank_value;
+            self.state.update_lines();
+        }
 
         ui.separator();
 
@@ -117,9 +127,35 @@ impl App {
 
     fn editor(&mut self, ui: &mut Ui) {
         Frame::canvas(ui.style()).show(ui, |ui| {
-            ScrollArea::new([true, true]).show_viewport(ui, |ui, viewport| {
-                ui.allocate_space(ui.available_size());
+            let text_style = egui::TextStyle::Monospace;
+            let row_height = ui.text_style_height(&text_style);
+            let num_rows = self.state.lines.len();
+            let font_id = text_style.resolve(ui.style());
+            let char_width = ui.fonts(|fonts| fonts.glyph_width(&font_id, 'x'));
+            egui::ScrollArea::vertical().auto_shrink(false).show_rows(ui, row_height, num_rows, |ui, row_range| {
                 // contents of the editor
+                for i in row_range {
+                    let l = &self.state.lines[i];
+                    let comment = if let dis::LineKind::Code = l.kind {
+                        self.state.comments.get(&l.pc).map(|l| "; ".to_owned() + l).unwrap_or("".to_owned())
+                    } else { String::new() };
+                    // idk why but it seems like i need to wrap the stripbuilder inside a
+                    // Horizontal here lol
+                    ui.horizontal(|ui| {
+                        egui_extras::StripBuilder::new(ui)
+                            .size(egui_extras::Size::exact(8. * char_width))
+                            .size(egui_extras::Size::exact(40. * char_width))
+                            .size(egui_extras::Size::remainder())
+                            .horizontal(|mut strip| {
+                                strip.cell(|ui| { ui.monospace(format!("{:06X}", l.pc)); });
+                                strip.cell(|ui| {
+                                    let txt = egui::RichText::new(l.text.trim_end()).monospace().color(egui::Color32::WHITE);
+                                    ui.label(txt);
+                                });
+                                strip.cell(|ui| { ui.monospace(comment); });
+                            });
+                    });
+                }
             });
         });
     }
