@@ -1,4 +1,3 @@
-use glow::HasContext;
 use serde_derive::{Serialize, Deserialize};
 use crate::dis;
 use crate::rom::Rom;
@@ -285,7 +284,9 @@ pub struct GlobalState {
     pub rules: Vec<dis::Rule>,
     pub selection: Option<[u32;2]>,
     pub lines: Vec<dis::Line>,
-    pub comments: HashMap<u32, String>,
+    pub display_lines: Vec<dis::DisplayLine>,
+    pub asm_comments: HashMap<u32, Vec<String>>,
+    pub label_comments: HashMap<String, Vec<String>>,
     pub editing_comment: Option<u32>,
     pub editing_label: Option<u32>,
     pub bank: u8,
@@ -296,8 +297,15 @@ pub struct GlobalState {
 #[derive(Serialize, Deserialize)]
 pub struct SavedData {
     rules: Vec<dis::Rule>,
-    comments: HashMap<u32, String>,
-    label_names: HashMap<u32, String>,
+    asm_comments: HashMap<u32, Vec<String>>,
+    labels: Vec<SavedLabel>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SavedLabel {
+    name: String,
+    pc: u32,
+    comments: Vec<String>,
 }
 
 impl GlobalState {
@@ -309,9 +317,17 @@ impl GlobalState {
         let rom = Rom::new(rom_bytes, crate::rom::Mapper::LoRom);
         let mut dis = dis::Disassembler::new(rom.clone());
         let data: SavedData = serde_yaml::from_slice(&std::fs::read(rules_fname).unwrap()).unwrap();
-        dis.label_names = data.label_names;
+        let mut label_comments = HashMap::new();
+        for lbl in data.labels {
+            // todo: when multiple with same pc, which one gets priority?
+            dis.reverse_labels.insert(lbl.pc, lbl.name.clone());
+            // todo: ban duplicate names or something, handle sublabels
+            dis.label_names.insert(lbl.name.clone(), lbl.pc);
+            label_comments.insert(lbl.name, lbl.comments);
+        }
         dis.process_rules(data.rules.iter());
-        let lines = dis.print_bank(0);
+        let lines = dis.get_lines(0);
+        let display_lines = dis.get_display_lines(&lines, &data.asm_comments, &label_comments);
         Self {
             rom,
             dis,
@@ -320,25 +336,35 @@ impl GlobalState {
             lines,
             editing_comment: None,
             editing_label: None,
-            comments: data.comments,
             bank: 0,
             rules_filename: rules_fname.to_string(),
+            display_lines,
+            asm_comments: data.asm_comments,
+            label_comments,
         }
     }
     pub fn save(&mut self) {
-        self.comments.retain(|_k, v| {
+        self.asm_comments.retain(|_k, v| {
             v.len() > 0
         });
+        let labels = self.dis.label_names.iter().map(|(name, &pc)| {
+            SavedLabel {
+                name: name.clone(),
+                pc,
+                comments: self.label_comments.get(name).cloned().unwrap_or(vec![]),
+            }
+        }).collect();
         let b = serde_yaml::to_string(&SavedData {
             rules: self.rules.clone(),
-            comments: self.comments.clone(),
-            label_names: self.dis.label_names.clone(),
+            asm_comments: self.asm_comments.clone(),
+            labels,
         }).unwrap();
         // TODO: error reporting
         std::fs::write(&self.rules_filename, &b).unwrap();
     }
     pub fn update_lines(&mut self) {
-        self.lines = self.dis.print_bank(self.bank as _);
+        self.lines = self.dis.get_lines(self.bank as _);
+        self.display_lines = self.dis.get_display_lines(&self.lines, &self.asm_comments, &self.label_comments);
     }
     /*
     fn disassemble(&mut self, start: u32) {

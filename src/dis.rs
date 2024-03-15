@@ -11,7 +11,9 @@ pub struct Disassembler {
     pub returns: HashSet<u32>,
     pub subroutines: HashMap<u32, Subroutine>,
     pub extra_rules: Vec<Rule>,
-    pub label_names: HashMap<u32, String>,
+    pub reverse_labels: HashMap<u32, String>,
+    pub label_names: HashMap<String, u32>,
+    pub manual_asms: HashMap<u32, ManualAsm>,
 }
 
 #[derive(Clone,Debug)]
@@ -54,22 +56,42 @@ pub struct QueueEntry {
 #[derive(Deserialize, Serialize, Clone)]
 pub enum Rule {
     JumpTable { pc: u32, size: u32, long: bool },
+    ManualAsm { pc: u32, size: u32, text: String },
 }
 
 #[derive(Clone, Debug)]
 pub struct Line {
     pub pc: u32,
     pub len: usize,
-    pub text: String,
     pub kind: LineKind
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum LineKind {
-    Label,
-    Code,
-    Data,
+    Label(String),
+    Code(String),
+    //Data,
+    ManualAsm(Vec<String>),
     Spacing,
+}
+
+pub struct ManualAsm {
+    size: u32,
+    text: String,
+}
+
+// each "real line" can display on multiple lines in the disassembly view:
+// - a line can have multiple comments
+// - additionally, in ManualAsm, the entire asm block is one Line, but there is
+//   one DisplayLine for each actual line of it
+#[derive(Clone, Debug)]
+pub struct DisplayLine {
+    // index into the Vec<Line>. should really be &Line or something but i Don't want to figure out
+    // how to borrow check that
+    pub which_line: usize,
+    // for ManualAsm, which line of the asm block it is
+    pub line_offset: usize,
+    pub comment: String,
 }
 
 impl Disassembler {
@@ -82,6 +104,8 @@ impl Disassembler {
             subroutines: HashMap::new(),
             extra_rules: vec![],
             label_names: HashMap::new(),
+            reverse_labels: HashMap::new(),
+            manual_asms: HashMap::new(),
         }
     }
     pub fn process_rules<'a>(&mut self, rules: impl IntoIterator<Item=&'a Rule>) {
@@ -109,33 +133,41 @@ impl Disassembler {
                     //self.xrefs.insert(addr, vec![]);
                 }
             }
+            Rule::ManualAsm { pc, size, text } => {
+                self.manual_asms.insert(*pc, ManualAsm { size: *size, text: text.to_string() });
+            }
         } }
     }
-    pub fn print_bank(&self, bank: u32) -> Vec<Line> {
+    pub fn get_lines(&self, bank: u32) -> Vec<Line> {
         let mut lines = vec![];
         let mut rpc = 0x8000;
         while rpc < 0x10000 {
             let pc = rpc + (bank << 16);
             use std::fmt::Write;
-            if self.labels.contains(&pc) || self.label_names.contains_key(&pc) {
+            if self.labels.contains(&pc) || self.reverse_labels.contains_key(&pc) {
                 let mut out = String::new();
-                writeln!(out, "{}:", self.get_label(pc));
-                lines.push(Line { pc, len: 0, text: out, kind: LineKind::Label });
+                let lbl = self.get_label(pc);
+                writeln!(out, "{}:", &lbl).unwrap();
+                lines.push(Line { pc, len: 0, kind: LineKind::Label(lbl) });
             }
-            if let Some(i) = &self.entries.get(&pc) {
+            if let Some(c) = self.manual_asms.get(&pc) {
+                let text = c.text.split('\n').map(|x| x.to_string()).collect();
+                lines.push(Line { pc, len: c.size as usize, kind: LineKind::ManualAsm(text) });
+                rpc += c.size;
+            } else if let Some(i) = &self.entries.get(&pc) {
                 let mut out = String::new();
-                write!(out, "    ");
+                write!(out, "    ").unwrap();
                 let old_len = out.len();
                 if let Some(c) = i.instr.jump_target(pc) {
-                    i.instr.display(Some(&self.get_label(c)), &mut out);
+                    i.instr.display(Some(&self.get_label(c)), &mut out).unwrap();
                 } else if let Some(c) = i.instr.label_target(pc, pc >> 16) {
                     if matches!(i.instr.mode, cpu::Mode::Imm) {
-                        i.instr.display(None, &mut out);
+                        i.instr.display(None, &mut out).unwrap();
                     } else {
-                        i.instr.display(Some(&self.get_data_label(c)), &mut out);
+                        i.instr.display(Some(&self.get_data_label(c)), &mut out).unwrap();
                     }
                 } else {
-                    i.instr.display(None, &mut out);
+                    i.instr.display(None, &mut out).unwrap();
                 }
                 /*write!(out, "{}", " ".repeat(48_usize.saturating_sub(out.len()-old_len)));
                 writeln!(out, "; {:06X} | {}{} | {}",
@@ -144,17 +176,57 @@ impl Disassembler {
                     if i.state.x { "X" } else { "x" },
                     i.stack.len()
                 );*/
-                lines.push(Line { pc, len: i.instr.size, text: out, kind: LineKind::Code });
+                lines.push(Line { pc, len: i.instr.size, kind: LineKind::Code(out) });
                 if i.instr.divergent() {
-                    lines.push(Line { pc: pc+i.instr.size as u32 + 1, len: 0, text: "".into(), kind: LineKind::Spacing });
+                    lines.push(Line { pc: pc+i.instr.size as u32 + 1, len: 0, kind: LineKind::Spacing });
                 }
                 rpc += (i.instr.size + 1) as u32;
             } else {
-                lines.push(Line { pc, len: 1, text: format!("    db ${:02X}", self.rom.load(pc)), kind: LineKind::Data });
+                lines.push(Line { pc, len: 1, kind: LineKind::Code(format!("    db ${:02X}", self.rom.load(pc))) });
                 rpc += 1;
             }
         }
         lines
+    }
+    pub fn get_display_lines(&self, lines: &Vec<Line>, asm_comments: &HashMap<u32, Vec<String>>, label_comments: &HashMap<String, Vec<String>>) -> Vec<DisplayLine> {
+        let mut disp_lines = vec![];
+        for (i, line) in lines.iter().enumerate() {
+            match &line.kind {
+                LineKind::Label(lbl) => {
+                    let comments = label_comments.get(lbl).map(|x| x.clone()).unwrap_or(vec![]);
+                    if comments.len() > 0 {
+                        for (j, comment) in comments.into_iter().enumerate() {
+                            disp_lines.push(DisplayLine { which_line: i, line_offset: j, comment });
+                        }
+                    } else {
+                        disp_lines.push(DisplayLine { which_line: i, line_offset: 0, comment: "".into() });
+                    }
+                }
+                LineKind::Code(txt) => {
+                    let comments = asm_comments.get(&line.pc).map(|x| x.clone()).unwrap_or(vec![]);
+                    if comments.len() > 0 {
+                        for (j, comment) in comments.into_iter().enumerate() {
+                            disp_lines.push(DisplayLine { which_line: i, line_offset: j, comment });
+                        }
+                    } else {
+                        disp_lines.push(DisplayLine { which_line: i, line_offset: 0, comment: "".into() });
+                    }
+                }
+                LineKind::ManualAsm(lines) => {
+                    // display all the comments at the start of the manual block i guess
+                    let comments = asm_comments.get(&line.pc).map(|x| x.clone()).unwrap_or(vec![]);
+                    let comm_len = comments.len();
+                    for (j, comment) in comments.into_iter().enumerate() {
+                        disp_lines.push(DisplayLine { which_line: i, line_offset: j, comment });
+                    }
+                    for j in comm_len..lines.len() {
+                        disp_lines.push(DisplayLine { which_line: i, line_offset: j, comment: "".into() });
+                    }
+                }
+                LineKind::Spacing => disp_lines.push(DisplayLine { which_line: i, line_offset: 0, comment: "".into() }),
+            }
+        }
+        disp_lines
     }
     pub fn process(&mut self, entry: QueueEntry) -> &Subroutine {
         let orig_pc = entry.pc;
@@ -176,7 +248,7 @@ impl Disassembler {
             self.labels.insert(pc);
             while let Some((size, instr)) = cpu::parse_instr(self.rom.slice(pc), state) {
                 use Mnemonic::*;
-                'inner: for i in pc..pc+size as u32 {
+                for i in pc..pc+size as u32 {
                     if let Some(c) = self.entries.get(&i) {
                         // TODO: figure out sr_effect
                         if i == pc {
@@ -231,7 +303,7 @@ impl Disassembler {
         self.subroutines.entry(orig_pc).or_insert(sr)
     }
     pub fn get_label(&self, addr: u32) -> String {
-        if let Some(v) = self.label_names.get(&addr) {
+        if let Some(v) = self.reverse_labels.get(&addr) {
             v.to_string()
         } else if self.subroutines.contains_key(&addr) {
             format!("sub_{:06X}", addr)
@@ -252,7 +324,7 @@ impl Disassembler {
     }
     pub fn get_data_label(&self, mut addr: u32) -> String {
         addr = self.normalize_addr(addr);
-        if let Some(v) = self.label_names.get(&addr) {
+        if let Some(v) = self.reverse_labels.get(&addr) {
             v.to_string()
         } else if addr >= 0x7E2000 {
             format!("wram_{:06X}", addr)

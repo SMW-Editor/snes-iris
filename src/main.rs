@@ -4,14 +4,12 @@ use eframe::NativeOptions;
 use egui::FontDefinitions;
 use egui_phosphor::Variant;
 use glutin_winit::{GlWindow, DisplayBuilder};
-use glutin::context::{ContextApi, ContextAttributesBuilder, Version};
+use glutin::context::ContextAttributesBuilder;
 use winit::event_loop::EventLoop;
 use glutin::display::{GlDisplay, GetGlDisplay};
 use raw_window_handle::HasRawWindowHandle;
 use glutin::prelude::*;
 use winit::event::{Event, WindowEvent};
-
-use glow::HasContext;
 
 mod driver;
 mod cpu;
@@ -76,7 +74,7 @@ fn imgui_app() {
 
     let gl_ctx = gl_ctx.make_current(&gl_surface).unwrap();
 
-    let mut gl = unsafe { glow::Context::from_loader_function_cstr(|s| gl_display.get_proc_address(s) as *const _) };
+    let gl = unsafe { glow::Context::from_loader_function_cstr(|s| gl_display.get_proc_address(s) as *const _) };
 
     // imgui stuff
     let mut im_ctx = imgui::Context::create();
@@ -100,7 +98,6 @@ fn imgui_app() {
 
 
     event_loop.run(move |event, _, control_flow| {
-        use rand::Rng;
         control_flow.set_poll();
 
         im_platform.handle_event(im_ctx.io_mut(), &window, &event);

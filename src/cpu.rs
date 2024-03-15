@@ -81,7 +81,6 @@ pub fn affects(mnem: Mnemonic) -> Option<Register> {
 
 impl Mode {
     pub fn format_item<X: std::fmt::Display, W: std::fmt::Write>(self, arg: X, mut fmt: W) -> std::fmt::Result {
-        use std::fmt::Write;
         match self {
             Imp => write!(fmt, ""),
             Imm => write!(fmt, " #{}", arg),

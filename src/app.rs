@@ -12,11 +12,13 @@ pub struct App {
     // this is separate to allow detecting when the bank value actually changed
     bank_value: u8,
     currently_edited_text: Option<String>,
+    // used to deal with some jank in editing multiline comments
+    move_comment_focus_to: Option<(usize, usize)>,
 }
 
 impl App {
     pub fn new(state: GlobalState) -> Self {
-        Self { bank_value: state.bank, state, currently_edited_text: None, }
+        Self { bank_value: state.bank, state, currently_edited_text: None, move_comment_focus_to: None }
     }
 }
 
@@ -105,6 +107,7 @@ impl App {
     fn toolbar(&mut self, ui: &mut Ui) {
         if ui.button(icons::FLOPPY_DISK).clicked() {
             // save
+            self.state.save();
         }
 
         ui.separator();
@@ -127,7 +130,7 @@ impl App {
         Frame::canvas(ui.style()).show(ui, |ui| {
             let text_style = TextStyle::Monospace;
             let row_height = ui.text_style_height(&text_style);
-            let num_rows = self.state.lines.len();
+            let num_rows = self.state.display_lines.len();
             let font_id = text_style.resolve(ui.style());
             let char_width = ui.fonts(|fonts| fonts.glyph_width(&font_id, 'x'));
             ScrollArea::vertical().auto_shrink(false).show_rows(ui, row_height, num_rows, |ui, row_range| {
@@ -135,59 +138,104 @@ impl App {
                 for i in row_range {
                     ui.horizontal(|ui| {
                         StripBuilder::new(ui)
-                            .size(Size::exact(8. * char_width))
+                            .size(Size::exact(12. * char_width))
                             .size(Size::exact(40. * char_width))
                             .size(Size::remainder())
                             .horizontal(|mut strip| {
-                                let line_pc = self.state.lines[i].pc;
-                                let line_kind = self.state.lines[i].kind;
-                                strip.cell(|ui| { ui.monospace(format!("{:06X}", line_pc)); });
+                                let disp_line = self.state.display_lines[i].clone();
+                                let line_pc = self.state.lines[disp_line.which_line].pc;
+                                let line_kind = self.state.lines[disp_line.which_line].kind.clone();
                                 strip.cell(|ui| {
-                                    if matches!(line_kind, LineKind::Label) {
-                                        let default = self.state.dis.get_label(line_pc);
-                                        let label = self.state.dis.label_names.entry(line_pc).or_insert(default);
-                                        if TextEdit::singleline(label)
-                                            .frame(false)
-                                            .font(TextStyle::Monospace)
-                                            .desired_width(f32::INFINITY)
-                                            .margin(vec2(0.0, 0.0))
-                                            .show(ui)
-                                            .response
-                                            .changed()
-                                        {
-                                            self.state.update_lines();
-                                        }
-                                    } else {
-                                        ui.monospace(RichText::new(self.state.lines[i].text.trim_end()).color(Color32::WHITE));
+                                    //ui.monospace(format!("{},{},{:X}", disp_line.which_line, disp_line.line_offset, line_pc));
+                                    if !matches!(line_kind, LineKind::Spacing) && disp_line.line_offset == 0 {
+                                        ui.monospace(format!("{:06X}", line_pc));
                                     }
                                 });
                                 strip.cell(|ui| {
-                                    let mut comment = match line_kind {
-                                        LineKind::Code => self.state.comments
-                                            .get_mut(&line_pc)
-                                            .map(|l| l.to_owned())
-                                            .unwrap_or("".to_owned()),
-                                        _ => String::new(),
-                                    };
+                                    match &line_kind {
+                                        LineKind::Label(lbl) => {
+                                            if disp_line.line_offset == 0 {
+                                                // todo: HOW do we handle the : here lol
+                                                let mut lbl = lbl.clone() + ":";
+                                                if TextEdit::singleline(&mut lbl)
+                                                    .frame(false)
+                                                    .font(TextStyle::Monospace)
+                                                    .desired_width(f32::INFINITY)
+                                                    .margin(vec2(0.0, 0.0))
+                                                    .show(ui)
+                                                    .response
+                                                    .changed()
+                                                {
+                                                    self.state.update_lines();
+                                                }
+                                            }
+                                        }
+                                        LineKind::Code(txt) => {
+                                            if disp_line.line_offset == 0 {
+                                                ui.monospace(RichText::new(txt.trim_end()).color(Color32::WHITE));
+                                            }
+                                        }
+                                        LineKind::ManualAsm(lines) => {
+                                            if disp_line.line_offset < lines.len() {
+                                                // TODO: figure out edit semantics for this
+                                                ui.monospace(RichText::new(&lines[disp_line.line_offset]).color(Color32::YELLOW));
+                                            }
+                                        }
+                                        LineKind::Spacing => {}
+                                    }
+                                });
+                                strip.cell(|ui| {
+                                    let mut comment = disp_line.comment.clone();
+                                    // we need to test for the old value here, not the new one
+                                    let comment_is_empty = comment.is_empty();
 
                                     ui.monospace("; ");
-                                    if TextEdit::singleline(&mut comment)
+                                    let resp = TextEdit::singleline(&mut comment)
                                         .frame(false)
                                         .font(TextStyle::Monospace)
                                         .desired_width(f32::INFINITY)
                                         .margin(vec2(0.0, 0.0))
                                         .show(ui)
-                                        .response
-                                        .changed()
-                                    {
-                                        if comment.is_empty() {
-                                            self.state.comments.remove(&line_pc);
-                                        } else {
-                                            match self.state.comments.get_mut(&line_pc) {
-                                                Some(old_comment) => *old_comment = comment,
-                                                None => { self.state.comments.insert(line_pc, comment); },
-                                            }
+                                        .response;
+
+                                    if self.move_comment_focus_to.is_some_and(|(i, j)| i == disp_line.which_line && j == disp_line.line_offset) {
+                                        self.move_comment_focus_to = None;
+                                        resp.request_focus();
+                                    }
+
+                                    let this_comments = if let LineKind::Label(lbl) = line_kind {
+                                        self.state.label_comments.entry(lbl).or_default()
+                                    } else {
+                                        self.state.asm_comments.entry(line_pc).or_default()
+                                    };
+                                    if resp.has_focus() && comment_is_empty && ui.input(|i| i.key_pressed(egui::Key::Backspace)) {
+                                        //println!("removal!");
+                                        if disp_line.line_offset < this_comments.len() {
+                                            this_comments.remove(disp_line.line_offset);
                                         }
+                                        self.state.update_lines();
+                                        resp.surrender_focus();
+                                        // move focus to the previous line
+                                        self.move_comment_focus_to = Some((disp_line.which_line, disp_line.line_offset.saturating_sub(1)));
+                                    // checking on lost_focus here because the enter press will
+                                    // actually unfocus the textarea itself
+                                    } else if resp.lost_focus() && ui.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Enter)) {
+                                        //println!("add!");
+                                        if this_comments.len() <= disp_line.line_offset {
+                                            this_comments.resize(disp_line.line_offset + 1, "".into());
+                                        }
+                                        this_comments.insert(disp_line.line_offset+1, "".into());
+                                        self.state.update_lines();
+                                        resp.surrender_focus();
+                                        self.move_comment_focus_to = Some((disp_line.which_line, disp_line.line_offset + 1));
+                                    } else if resp.changed() {
+                                        if this_comments.len() <= disp_line.line_offset {
+                                            this_comments.resize(disp_line.line_offset + 1, "".into());
+                                        }
+                                        this_comments[disp_line.line_offset] = comment;
+                                        // doing a whole update_lines on this on every single edit
+                                        // feels a bit excessive? but whatever
+                                        self.state.update_lines();
                                     }
                                 });
                             });
