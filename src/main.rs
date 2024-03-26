@@ -1,23 +1,18 @@
-use app::App;
-use driver::GlobalState;
 use eframe::NativeOptions;
 use egui::FontDefinitions;
 use egui_phosphor::Variant;
-use glutin_winit::{GlWindow, DisplayBuilder};
-use glutin::context::{ContextApi, ContextAttributesBuilder, Version};
-use winit::event_loop::EventLoop;
-use glutin::display::{GlDisplay, GetGlDisplay};
-use raw_window_handle::HasRawWindowHandle;
-use glutin::prelude::*;
-use winit::event::{Event, WindowEvent};
-
 use glow::HasContext;
-
-mod driver;
-mod cpu;
-mod dis;
-mod rom;
-mod app;
+use glutin::context::ContextAttributesBuilder;
+use glutin::display::{GlDisplay, GetGlDisplay};
+use glutin::prelude::*;
+use glutin_winit::{GlWindow, DisplayBuilder};
+use raw_window_handle::HasRawWindowHandle;
+use snes_iris::App;
+use snes_iris::driver::GlobalState;
+use winit::event::{Event, WindowEvent};
+use winit::event_loop::EventLoop;
+use snes_iris::dis::{Disassembler, Rule};
+use snes_iris::rom::{Mapper, Rom};
 
 fn main() {
     // imgui_app();
@@ -36,10 +31,10 @@ fn main() {
 }
 
 fn main2() {
-    let rom = rom::Rom::new(std::fs::read("smw.sfc").unwrap()[0x200..].to_vec(), rom::Mapper::LoRom);
-    let mut dis = dis::Disassembler::new(rom);
+    let rom = Rom::new(std::fs::read("smw.sfc").unwrap()[0x200..].to_vec(), Mapper::LoRom);
+    let mut dis = Disassembler::new(rom);
 
-    let rules: Vec<dis::Rule> = serde_yaml::from_slice(&std::fs::read("rules.yml").unwrap()).unwrap();
+    let rules: Vec<Rule> = serde_yaml::from_slice(&std::fs::read("rules.yml").unwrap()).unwrap();
     dis.process_rules(rules.iter());
 }
 

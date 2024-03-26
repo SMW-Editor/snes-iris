@@ -1,10 +1,15 @@
-use egui::{CentralPanel, Color32, Context, DragValue, Frame, Key, RichText, ScrollArea, TextBuffer, TextEdit, TextStyle, TopBottomPanel, Ui, vec2};
+use egui::*;
 use egui_extras::{Size, StripBuilder};
 
 use egui_phosphor::regular as icons;
 
-use crate::{driver::GlobalState, dis};
-use crate::dis::{Line, LineKind};
+use driver::GlobalState;
+use dis::LineKind;
+
+pub mod driver;
+pub mod cpu;
+pub mod dis;
+pub mod rom;
 
 pub struct App {
     // todo: should probably keep everything in either App or GlobalState
@@ -23,7 +28,7 @@ impl App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         TopBottomPanel::top("menu-bar").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
+            menu::bar(ui, |ui| {
                 self.menu_bar(ui);
             });
         });
