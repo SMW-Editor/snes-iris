@@ -1,4 +1,5 @@
 use egui::*;
+use egui::text::CursorRange;
 use egui_extras::{Size, StripBuilder};
 
 use egui_phosphor::regular as icons;
@@ -151,17 +152,28 @@ impl App {
                                     if matches!(line_kind, LineKind::Label) {
                                         let default = self.state.dis.get_label(line_pc);
                                         let label = self.state.dis.label_names.entry(line_pc).or_insert(default);
-                                        if TextEdit::singleline(label)
+                                        let mut output = TextEdit::singleline(label)
                                             .frame(false)
                                             .font(TextStyle::Monospace)
                                             .desired_width(f32::INFINITY)
-                                            .margin(vec2(0.0, 0.0))
-                                            .show(ui)
-                                            .response
-                                            .changed()
-                                        {
+                                            .margin(Vec2::ZERO)
+                                            .layouter(&mut |ui, string, wrap_width| {
+                                                WidgetText::from(string.to_string() + ":").into_galley(ui, None, ui.available_width(), TextStyle::Monospace)
+                                            })
+                                            .show(ui);
+                                        if output.response.changed() {
+                                            let new_len = label.len();
+                                            label.retain(|c| c.is_ascii_alphanumeric() || "_.".contains(c));
+                                            let adjusted_len = label.len();
+                                            if adjusted_len < new_len {
+                                                if let Some(mut cursor_range) = output.cursor_range {
+                                                    cursor_range.primary.ccursor.index -= new_len - adjusted_len;
+                                                    output.state.cursor.set_range(Some(cursor_range));
+                                                    output.state.store(ui.ctx(), output.response.id);
+                                                }
+                                            }
                                             self.state.update_lines();
-                                        }
+                                        };
                                     } else {
                                         ui.monospace(RichText::new(self.state.lines[i].text.trim_end()).color(Color32::WHITE));
                                     }
