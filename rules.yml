@@ -340,24 +340,42 @@ rules:
   size: 63
   long: true
 comments:
-  32772: Disable HDMA
-  32802: Set up direct page
-  32775: Disable DMA
-  32797: Clear flags d,i,z,c, set 16-bit mode
-  37524: This fills the portion of the HDMA table with 00 FF.
-  32790: Enable f-blank
-  37521: x = offset within hdma_table
-  37514: If yes, branch
-  32807: Create OAM reset routine
-  37518: Otherwise, clear two last bytes in the hdma table
-  37510: Is bit 0 of interrupt mode set?
-  32768: Disable interrupts.
-  32769: Disable NMI, IRQ and autojoypad
-  32796: Disable emulation mode
-  37536: Enable only channel 7 for HDMA.
-  32778: Clear APU ports
-  32806: Set up stack
-  32875: Wait until interrupt occurs
+  32772:
+    0: Disable HDMA
+  32802:
+    0: Set up direct page
+  32775:
+    0: Disable DMA
+  32797:
+    0: Clear flags d,i,z,c, set 16-bit mode
+  37524:
+    0: This fills the portion of the HDMA table with 00 FF.
+  32790:
+    0: Enable f-blank
+  37521:
+    0: x = offset within hdma_table
+  37514:
+    0: If yes, branch
+  32807:
+    0: Create OAM reset routine
+  37518:
+    0: Otherwise, clear two last bytes in the hdma table
+  37510:
+    0: Is bit 0 of interrupt mode set?
+  32768:
+    0: Disable interrupts.
+  32769:
+    0: Disable NMI, IRQ and autojoypad
+  32796:
+    0: Disable emulation mode
+  37536:
+    0: Enable only channel 7 for HDMA.
+  32778:
+    0: Clear APU ports
+  32806:
+    0: Set up stack
+  32875:
+    0: Wait until interrupt occurs
 label_names:
   8514: hw_apu_io2
   37536: hdma_set_ch7

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use egui::*;
 use egui::text::CursorRange;
 use egui_extras::{Size, StripBuilder};
@@ -138,6 +139,8 @@ impl App {
             let char_width = ui.fonts(|fonts| fonts.glyph_width(&font_id, 'x'));
             ScrollArea::vertical().auto_shrink(false).show_rows(ui, row_height, num_rows, |ui, row_range| {
                 // contents of the editor
+                let mut prev_line_pc = 0;
+                let mut line_idx_at_this_pc = 0usize;
                 for i in row_range {
                     ui.horizontal(|ui| {
                         StripBuilder::new(ui)
@@ -147,6 +150,12 @@ impl App {
                             .horizontal(|mut strip| {
                                 let line_pc = self.state.lines[i].pc;
                                 let line_kind = self.state.lines[i].kind;
+
+                                if line_pc != prev_line_pc {
+                                    prev_line_pc = line_pc;
+                                    line_idx_at_this_pc = 0;
+                                }
+
                                 strip.cell(|ui| { ui.monospace(format!("{:06X}", line_pc)); });
                                 strip.cell(|ui| {
                                     if matches!(line_kind, LineKind::Label) {
@@ -179,13 +188,11 @@ impl App {
                                     }
                                 });
                                 strip.cell(|ui| {
-                                    let mut comment = match line_kind {
-                                        LineKind::Code => self.state.comments
-                                            .get_mut(&line_pc)
-                                            .map(|l| l.to_owned())
-                                            .unwrap_or("".to_owned()),
-                                        _ => String::new(),
-                                    };
+                                    let mut comment = self.state.comments
+                                        .get_mut(&line_pc)
+                                        .map(|ls| ls.get(&line_idx_at_this_pc).map(|l| l.to_owned()))
+                                        .flatten()
+                                        .unwrap_or("".to_owned());
 
                                     ui.monospace("; ");
                                     if TextEdit::singleline(&mut comment)
@@ -198,17 +205,30 @@ impl App {
                                         .changed()
                                     {
                                         if comment.is_empty() {
-                                            self.state.comments.remove(&line_pc);
+                                            if let Some(comment_lines) = self.state.comments.get_mut(&line_pc) {
+                                                comment_lines.remove(&line_idx_at_this_pc);
+                                            }
+                                            if self.state.comments.is_empty() {
+                                                self.state.comments.remove(&line_pc);
+                                            }
                                         } else {
                                             match self.state.comments.get_mut(&line_pc) {
-                                                Some(old_comment) => *old_comment = comment,
-                                                None => { self.state.comments.insert(line_pc, comment); },
+                                                Some(comment_lines) => {
+                                                    comment_lines.insert(line_idx_at_this_pc, comment);
+                                                }
+                                                None => {
+                                                    let mut comment_lines = HashMap::new();
+                                                    comment_lines.insert(line_idx_at_this_pc, comment);
+                                                    self.state.comments.insert(line_pc, comment_lines);
+                                                },
                                             }
                                         }
                                     }
                                 });
                             });
                     });
+
+                    line_idx_at_this_pc += 1;
                 }
             });
         });

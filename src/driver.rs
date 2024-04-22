@@ -285,7 +285,7 @@ pub struct GlobalState {
     pub rules: Vec<dis::Rule>,
     pub selection: Option<[u32;2]>,
     pub lines: Vec<dis::Line>,
-    pub comments: HashMap<u32, String>,
+    pub comments: HashMap<u32, HashMap<usize, String>>,
     pub editing_comment: Option<u32>,
     pub editing_label: Option<u32>,
     pub bank: u8,
@@ -296,7 +296,7 @@ pub struct GlobalState {
 #[derive(Serialize, Deserialize)]
 pub struct SavedData {
     rules: Vec<dis::Rule>,
-    comments: HashMap<u32, String>,
+    comments: HashMap<u32, HashMap<usize, String>>,
     label_names: HashMap<u32, String>,
 }
 

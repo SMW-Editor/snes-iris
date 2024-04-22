@@ -6,10 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-eframe = "0.26"
-egui = "0.26"
-egui_dock = "0.11"
-egui-phosphor = "0.4"
+eframe = "0.27"
+egui = "0.27"
+egui_dock = "0.12"
+egui_extras = "0.27"
+egui-phosphor = { git = "https://github.com/Adanos020/egui-phosphor", branch = "egui-0.27" }
 
 winit = "0.27"
 glutin = "0.30"
@@ -26,4 +27,3 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.9"
-egui_extras = "0.26.2"
